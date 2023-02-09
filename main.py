@@ -1,32 +1,92 @@
-from multiprocessing import freeze_support
-import timm
 import torch
 import torchvision
+from torchvision import datasets, models, transforms
+import torch.nn as nn
+from torch.nn import functional as F
+import torch.optim as optim
+from torch.autograd import Variable
+
+import numpy as np
+import matplotlib.pyplot as plt
 from PIL import Image
-from timm.data import resolve_data_config
-from timm.data.transforms_factory import create_transform
-import utils
 
-cifar100_test = torchvision.datasets.CIFAR100(root='./data', train=False, download=True)
+from model_wrappers import ModelWrapper as mw
+
+device = torch.device("cuda:0")
+
+batch_size_const = 64
 
 
-print(cifar100_test[0])
+def make_data_sets():
+    data_transforms = {
+        'train':
+            transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+            ]),
+        'test':
+            transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
+            ]),
+    }
 
-model = timm.create_model('resnet18', pretrained=True)
-model.eval()
-print(model.pretrained_cfg)
-top_k = 5
-transform = create_transform(**resolve_data_config(model.pretrained_cfg, model=model))
+    data_sets = {
+        'train': torchvision.datasets.CIFAR100(root='data', train=True, download=True,
+                                               transform=data_transforms['train']),
+        'test': torchvision.datasets.CIFAR100(root='data', download=True, transform=data_transforms['test'])
+    }
 
-for (image, label) in cifar100_test:
-    x = transform(image).unsqueeze(0)
-    out = model(x)
-    probabilities = torch.nn.functional.softmax(out[0], dim=0)
-    values, indices = torch.topk(probabilities, top_k)
-    #predictions = [
-    #    {"label": labels[i], "score": v.item()}
-    #    for i, v in zip(indices, values)
-    #]
-    #print(predictions)
+    dataloaders = {
+        'train':
+            torch.utils.data.DataLoader(data_sets['train'],
+                                        batch_size=batch_size_const,
+                                        shuffle=True,
+                                        num_workers=0),
+        'test':
+            torch.utils.data.DataLoader(data_sets['test'],
+                                        batch_size=batch_size_const,
+                                        shuffle=False,
+                                        num_workers=0)
+    }
 
-#out = model(cifar100_test[0])
+    return data_transforms, data_sets, dataloaders
+
+
+def main_fun():
+    dt, ds, dl = make_data_sets()
+    #resnet50 = mw.ModelWrapper(data_loaders=dl, data_sets=ds, epochs_num=20)
+    #train_accuracies, test_accuracies, train_losses, test_losses = resnet50.train_it()
+
+    #vgg19 = mw.ModelWrapper(data_loaders=dl, data_sets=ds, epochs_num=20, model=models.vgg19(weights=None))
+    #train_accuracies, test_accuracies, train_losses, test_losses = vgg19.train_it()
+
+    #vgg16 = mw.ModelWrapper(data_loaders=dl, data_sets=ds, epochs_num=20, model=models.vgg16(weights=None))
+    #train_accuracies, test_accuracies, train_losses, test_losses = vgg16.train_it()
+
+    mobile_net = mw.ModelWrapper(data_loaders=dl, data_sets=ds, epochs_num=20, model=models.mobilenet_v2(weights=None))
+    train_accuracies, test_accuracies, train_losses, test_losses = mobile_net.train_it()
+
+    plt.title("Train-Test Accuracy")
+    plt.plot(train_accuracies, label='Training accuracy')
+    plt.plot(test_accuracies, label='Test accuracy')
+    plt.xlabel('epochs_num')
+    plt.ylabel('accuracy')
+    plt.legend(frameon=False)
+    plt.savefig('accuracy_stat_MobileNet.png')
+
+    plt.clf()
+
+    plt.title("Train-Test Loss")
+    plt.plot(train_losses, label='Training loss')
+    plt.plot(test_losses, label='Test loss')
+    plt.xlabel('epochs_num')
+    plt.ylabel('loss')
+    plt.legend(frameon=False)
+    plt.savefig('losses_stat_MobileNet.png')
+
+
+if __name__ == '__main__':
+    main_fun()
+
+# See PyCharm help at https://www.jetbrains.com/help/pycharm/
