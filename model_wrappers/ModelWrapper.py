@@ -12,14 +12,16 @@ batch_size_const = 64
 
 class ModelWrapper:
 
-    def __init__(self, data_loaders, data_sets, epochs_num=20, model=models.resnet50(weights=None)):
+    def __init__(self, data_loaders, data_sets, epochs_num=20, model=models.resnet50(weights=None, num_classes=100),
+                 loss_fun=nn.CrossEntropyLoss(), learning_rate=3e-3):
         self.batch_size = batch_size_const
-        learning_rate = 3e-3
+        self.learning_rate = learning_rate
         self.epoch_num = epochs_num
         self.model = model
         self.model = self.model.cuda()
-        self.loss_fun = nn.CrossEntropyLoss()
-        self.optimizer = optim.SGD(self.model.parameters(), lr=learning_rate, momentum=0.9, weight_decay=5e-4)
+        self.loss_fun = loss_fun
+        self.optimizer = optim.SGD(self.model.parameters(), lr=self.learning_rate, momentum=0.9, weight_decay=5e-4)
+        #self.optimizer = optim.SGD(self.loss_fun.parameters(), lr=learning_rate)
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=10, gamma=0.1)
         self.dataloaders = data_loaders
         self.data_sets = data_sets
@@ -46,8 +48,9 @@ class ModelWrapper:
                     self.model.train()
 
                     for batch_index, (inputs, labels) in enumerate(self.dataloaders[phase]):
-                        inputs = Variable(inputs.cuda())
-                        labels = Variable(labels.cuda())
+                        inputs = inputs.cuda()
+                        labels = labels.cuda()
+                        inputs.requires_grad = True
 
                         inputs = inputs.float()
                         self.optimizer.zero_grad()
@@ -95,7 +98,7 @@ class ModelWrapper:
             print(f'test loss: {np.mean(test_losses):.4f}, test acc: {test_accuracies[-1]:.4f}\n')
 
             if is_better:
-                torch.save(self.model.state_dict(), f'models/weights.h5')
+                torch.save(self.model.state_dict(), f'models/resNet50_margin_loss.h5')
                 print('Improvement-Detected, save-model')
         train_accuracies_cpu = []
         test_accuracies_cpu = []
@@ -103,4 +106,4 @@ class ModelWrapper:
             train_accuracies_cpu.append(t.cpu())
         for t in test_accuracies:
             test_accuracies_cpu.append(t.cpu())
-        return train_accuracies_cpu, test_accuracies_cpu, train_losses, train_losses
+        return train_accuracies_cpu, test_accuracies_cpu, train_losses, test_losses
