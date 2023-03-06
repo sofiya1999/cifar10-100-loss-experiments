@@ -61,6 +61,8 @@ class ModelWrapper:
 
                         _, predictions = torch.max(outputs, 1)
                         loss_value += loss.item()
+                        if epoch == 10:
+                            print(epoch)
                         corrects_count += torch.sum(predictions == labels.data)
                         if batch_index % 20 == 0:
                             print(

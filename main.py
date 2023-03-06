@@ -63,9 +63,9 @@ def main_fun():
     model.fc = nn.Linear(2048, emb_size)
     resnet50 = mw.ModelWrapper(data_loaders=dl, data_sets=ds, epochs_num=20,
                                model=model,
-                               loss_fun=losses.ArcFaceLoss(num_classes=100, embedding_size=emb_size,
-                                                           margin=85.8, scale=24).to(torch.device('cuda')),
-                               learning_rate=3e-2)
+                               #loss_fun=losses.ArcFaceLoss(num_classes=100, embedding_size=emb_size,
+                               #                            margin=85.8, scale=24).to(torch.device('cuda')),
+                               learning_rate=3e-3)
     train_accuracies, test_accuracies, train_losses, test_losses = resnet50.train_it()
 
     #vgg19 = mw.ModelWrapper(data_loaders=dl, data_sets=ds, epochs_num=20, model=models.vgg19(weights=None))
