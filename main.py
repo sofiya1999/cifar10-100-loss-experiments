@@ -37,7 +37,7 @@ def make_data_sets():
     data_sets = {
         'train': torchvision.datasets.CIFAR100(root='data', train=True, download=True,
                                                transform=data_transforms['train']),
-        'test': torchvision.datasets.CIFAR100(root='data', download=True, transform=data_transforms['test'])
+        'test': torchvision.datasets.CIFAR100(root='data', download=True, train=False, transform=data_transforms['test'])
     }
 
     dataloaders = {
@@ -59,13 +59,15 @@ def make_data_sets():
 def main_fun():
     dt, ds, dl = make_data_sets()
     model = models.resnet50(weights=None, num_classes=100)
+    model.load_state_dict(torch.load("./models/resNet50.pt"))
+    #model = models.vgg19(weights=None, num_classes=100)
+    #model = models.mobilenet_v2(weights=None, num_classes=100)
     emb_size = 100
-    model.fc = nn.Linear(2048, emb_size)
     resnet50 = mw.ModelWrapper(data_loaders=dl, data_sets=ds, epochs_num=20,
                                model=model,
-                               #loss_fun=losses.ArcFaceLoss(num_classes=100, embedding_size=emb_size,
-                               #                            margin=85.8, scale=24).to(torch.device('cuda')),
-                               learning_rate=3e-3)
+                               loss_fun=losses.ArcFaceLoss(num_classes=100, embedding_size=emb_size,
+                                                           margin=28.6, scale=64).to(torch.device('cuda')),
+                               learning_rate=3e-5)
     train_accuracies, test_accuracies, train_losses, test_losses = resnet50.train_it()
 
     #vgg19 = mw.ModelWrapper(data_loaders=dl, data_sets=ds, epochs_num=20, model=models.vgg19(weights=None))
@@ -84,7 +86,7 @@ def main_fun():
     plt.xlabel('epochs_num')
     plt.ylabel('accuracy')
     plt.legend(frameon=False)
-    plt.savefig('accuracy_stat_resnet50_margin_loss.png')
+    plt.savefig('accuracy_stat_ResNet50MarginLoss_pretrained.png')
 
     plt.clf()
 
@@ -94,7 +96,7 @@ def main_fun():
     plt.xlabel('epochs_num')
     plt.ylabel('loss')
     plt.legend(frameon=False)
-    plt.savefig('losses_stat_resnet50_margin_loss.png')
+    plt.savefig('losses_stat_ResNet50MarginLoss_pretrained.png')
 
 
 if __name__ == '__main__':

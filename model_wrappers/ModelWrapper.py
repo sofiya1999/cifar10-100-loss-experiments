@@ -100,7 +100,7 @@ class ModelWrapper:
             print(f'test loss: {np.mean(test_losses):.4f}, test acc: {test_accuracies[-1]:.4f}\n')
 
             if is_better:
-                torch.save(self.model.state_dict(), f'models/resNet50_margin_loss.h5')
+                torch.save(self.model.state_dict(), f'models/margin_loss_pretrained.pt')
                 print('Improvement-Detected, save-model')
         train_accuracies_cpu = []
         test_accuracies_cpu = []
