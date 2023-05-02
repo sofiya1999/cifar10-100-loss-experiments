@@ -13,14 +13,14 @@ batch_size_const = 64
 class ModelWrapper:
 
     def __init__(self, data_loaders, data_sets, epochs_num=20, model=models.resnet50(weights=None, num_classes=100),
-                 loss_fun=nn.CrossEntropyLoss(), learning_rate=3e-3):
+                 loss_fun=nn.CrossEntropyLoss()):
         self.batch_size = batch_size_const
-        self.learning_rate = learning_rate
+        learning_rate = 3e-3
         self.epoch_num = epochs_num
         self.model = model
         self.model = self.model.cuda()
         self.loss_fun = loss_fun
-        self.optimizer = optim.SGD(self.model.parameters(), lr=self.learning_rate, momentum=0.9, weight_decay=5e-4)
+        self.optimizer = optim.SGD(self.model.parameters(), lr=learning_rate, momentum=0.9, weight_decay=5e-4)
         #self.optimizer = optim.SGD(self.loss_fun.parameters(), lr=learning_rate)
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=10, gamma=0.1)
         self.dataloaders = data_loaders
@@ -51,6 +51,7 @@ class ModelWrapper:
                         inputs = inputs.cuda()
                         labels = labels.cuda()
                         inputs.requires_grad = True
+                        #labels.requires_grad = True
 
                         inputs = inputs.float()
                         self.optimizer.zero_grad()
@@ -61,8 +62,6 @@ class ModelWrapper:
 
                         _, predictions = torch.max(outputs, 1)
                         loss_value += loss.item()
-                        if epoch == 10:
-                            print(epoch)
                         corrects_count += torch.sum(predictions == labels.data)
                         if batch_index % 20 == 0:
                             print(
@@ -81,9 +80,9 @@ class ModelWrapper:
                             outputs = self.model(inputs)
                             loss = self.loss_fun(outputs, labels)
 
-                            _, preds = torch.max(outputs, 1)
+                            _, predictions = torch.max(outputs, 1)
                             loss_value += loss.item()
-                            corrects_count += torch.sum(preds == labels.data)
+                            corrects_count += torch.sum(predictions == labels.data)
                     is_better = loss_value < test_loss_min
                     test_loss_min = loss_value if is_better else test_loss_min
 
@@ -100,7 +99,7 @@ class ModelWrapper:
             print(f'test loss: {np.mean(test_losses):.4f}, test acc: {test_accuracies[-1]:.4f}\n')
 
             if is_better:
-                torch.save(self.model.state_dict(), f'models/margin_loss_pretrained.pt')
+                torch.save(self.model.state_dict(), f'models/resNet50_arc_loss_50.h5')
                 print('Improvement-Detected, save-model')
         train_accuracies_cpu = []
         test_accuracies_cpu = []
