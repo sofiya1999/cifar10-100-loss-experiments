@@ -55,19 +55,22 @@ def make_data_sets():
 
     return data_transforms, data_sets, dataloaders
 
+arc_loss = losses.ArcFaceLoss(num_classes=100, embedding_size=128).to(torch.device('cuda'))
+normal_loss = nn.CrossEntropyLoss()
+
+
+def weighted_loss(outputs, labels):
+    return 0.5 * arc_loss(outputs, labels) + 0.5 * normal_loss(outputs, labels)
+
 
 def main_fun():
     dt, ds, dl = make_data_sets()
     model = models.resnet50(weights=None, num_classes=100)
-    model.load_state_dict(torch.load("./models/resNet50.pt"))
-    #model = models.vgg19(weights=None, num_classes=100)
-    #model = models.mobilenet_v2(weights=None, num_classes=100)
-    emb_size = 100
-    resnet50 = mw.ModelWrapper(data_loaders=dl, data_sets=ds, epochs_num=20,
+    model.fc = nn.Linear(2048, 128)
+    resnet50 = mw.ModelWrapper(data_loaders=dl, data_sets=ds, epochs_num=50,
                                model=model,
-                               loss_fun=losses.ArcFaceLoss(num_classes=100, embedding_size=emb_size,
-                                                           margin=28.6, scale=64).to(torch.device('cuda')),
-                               learning_rate=3e-5)
+                               #loss_fun=losses.MarginLoss(num_classes=100).to(torch.device('cuda:0')))
+                               loss_fun=weighted_loss)
     train_accuracies, test_accuracies, train_losses, test_losses = resnet50.train_it()
 
     #vgg19 = mw.ModelWrapper(data_loaders=dl, data_sets=ds, epochs_num=20, model=models.vgg19(weights=None))
@@ -86,7 +89,7 @@ def main_fun():
     plt.xlabel('epochs_num')
     plt.ylabel('accuracy')
     plt.legend(frameon=False)
-    plt.savefig('accuracy_stat_ResNet50MarginLoss_pretrained.png')
+    plt.savefig('accuracy_stat_resnet50_arc_loss_50.png')
 
     plt.clf()
 
@@ -96,7 +99,7 @@ def main_fun():
     plt.xlabel('epochs_num')
     plt.ylabel('loss')
     plt.legend(frameon=False)
-    plt.savefig('losses_stat_ResNet50MarginLoss_pretrained.png')
+    plt.savefig('losses_stat_resnet50_arc_loss_50.png')
 
 
 if __name__ == '__main__':
